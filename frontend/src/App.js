@@ -7,25 +7,27 @@ import SummaryCard from './components/SummaryCard';
 function App() {
   const [keyword, setKeyword] = useState('');
   const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false); // optional: show loading state
+  const [loading, setLoading] = useState(false); // show loading state
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!keyword) return;
-    setLoading(true);
+    if (!keyword.trim()) return; // prevent empty input
+    setLoading(true); // start loading
+
     try {
       const response = await axios.post('http://localhost:5000/analyze', { text: keyword });
       setResult(response.data);
     } catch (error) {
       console.error('Error fetching data:', error);
-      setResult(null);
     }
-    setLoading(false);
-  }
+
+    setLoading(false); // stop loading
+  };
 
   return (
     <div style={{ padding: '20px' }}>
       <h1>TrendLens – AI Market Trend Analyzer</h1>
+
       <form onSubmit={handleSubmit} style={{ marginBottom: '20px' }}>
         <input
           type="text"
@@ -37,7 +39,7 @@ function App() {
         <button type="submit" style={{ padding: '5px 15px' }}>Analyze</button>
       </form>
 
-      {loading && <p>Analyzing keyword...</p>}
+      {loading && <p>Analyzing… Please wait.</p>}
 
       {result && (
         <>

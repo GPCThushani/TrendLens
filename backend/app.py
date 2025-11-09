@@ -8,9 +8,20 @@ CORS(app)
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json()
-    text = data.get('text', '')  # matches frontend key
-    result = analyze_trend(text)
-    return jsonify(result)
+    keyword = data.get('text')  # make sure this matches frontend
+    if not keyword:
+        return jsonify({'error': 'No keyword provided'}), 400
+
+    result = analyze_trend(keyword)
+
+    # Ensure result has correct keys
+    response = {
+        'trend_data': result.get('trend_data', []),
+        'sentiment': result.get('sentiment', {'positive': 0, 'neutral': 0, 'negative': 0}),
+        'summary': result.get('summary', 'No summary available')
+    }
+
+    return jsonify(response)
 
 if __name__ == '__main__':
     app.run(debug=True)

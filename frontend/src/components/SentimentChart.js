@@ -33,6 +33,7 @@ const SentimentChart = ({ sentiment }) => {
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false, // allow chart to fill container
     plugins: {
       legend: {
         position: "bottom",
@@ -41,7 +42,14 @@ const SentimentChart = ({ sentiment }) => {
   };
 
   return (
-    <div style={{ width: "350px", marginTop: "20px" }}>
+    <div
+      style={{
+        width: "100%",         // take full width of parent
+        maxWidth: "500px",     // max width on large screens
+        height: "400px",       // height to make it more visible
+        margin: "20px auto"    // center horizontally and add top/bottom margin
+      }}
+    >
       <Pie data={chartData} options={options} />
     </div>
   );

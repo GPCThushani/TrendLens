@@ -22,22 +22,40 @@ ChartJS.register(
   Legend
 );
 
-const TrendChart = ({ data }) => {
-  if (!data || data.length === 0) return <p>No trend data available.</p>;
+const TrendChart = ({ results }) => {
+  if (!results || Object.keys(results).length === 0) return <p>No trend data available.</p>;
 
-  const chartData = {
-    labels: data.map(d => d.date),
-    datasets: [{
-      label: 'Trend Value',
-      data: data.map(d => d.value),   // ✔ FIXED
-      borderColor: 'blue',
-      borderWidth: 2,
-      tension: 0.3,
-      fill: false
-    }]
+  // Prepare data for multiple keywords
+  const labels = results[Object.keys(results)[0]].trend_data.map(d => d.date);
+
+  const datasets = Object.keys(results).map((kw, idx) => ({
+    label: kw,
+    data: results[kw].trend_data.map(d => d.value),
+    borderColor: `hsl(${idx * 60}, 70%, 50%)`, // different color for each keyword
+    borderWidth: 2,
+    tension: 0.3,
+    fill: false
+  }));
+
+  const chartData = { labels, datasets };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false, // allows custom height
+    plugins: {
+      legend: { position: 'bottom' },
+      title: { display: true, text: 'Keyword Trend Comparison' }
+    },
+    scales: {
+      y: { beginAtZero: true }
+    }
   };
 
-  return <Line data={chartData} />;
+  return (
+    <div style={{ width: '90%', maxWidth: '1200px', height: '500px', margin: '20px auto' }}>
+      <Line data={chartData} options={options} />
+    </div>
+  );
 };
 
 export default TrendChart;

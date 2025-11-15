@@ -5,22 +5,32 @@ from ai_models import analyze_trend
 app = Flask(__name__)
 CORS(app)
 
-# app.py (update analyze route)
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    data = request.get_json()
-    keywords = data.get('keywords')  # Expecting a list now
-    if not keywords or not isinstance(keywords, list):
-        return jsonify({'error': 'No keywords provided or not a list'}), 400
+    data = request.get_json() or {}
+    # accept either {"text":"..." } OR {"keywords":["a","b"]}
+    if 'keywords' in data and isinstance(data['keywords'], list):
+        keywords = data['keywords']
+    else:
+        text = data.get('text') or data.get('keyword') or ''
+        if not text:
+            return jsonify({'error':'No keyword provided'}), 400
+        keywords = [text]
 
     results = {}
-    for keyword in keywords:
-        results[keyword] = analyze_trend(keyword)
+    for kw in keywords:
+        try:
+            res = analyze_trend(kw)
+            # normalize keys
+            results[kw] = {
+                'trend_data': res.get('trend_data', []),
+                'sentiment': res.get('sentiment', {'positive':0,'neutral':0,'negative':0}),
+                'summary': res.get('summary', '')
+            }
+        except Exception as e:
+            results[kw] = {'error': str(e)}
 
     return jsonify(results)
 
-
 if __name__ == '__main__':
     app.run(debug=True)
-
-

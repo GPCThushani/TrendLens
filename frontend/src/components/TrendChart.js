@@ -23,15 +23,20 @@ ChartJS.register(
 );
 
 const TrendChart = ({ data }) => {
+  if (!data || data.length === 0) return <p>No trend data available.</p>;
+
   const chartData = {
     labels: data.map(d => d.date),
     datasets: [{
-      label: 'Mentions',
-      data: data.map(d => d.count),
+      label: 'Trend Value',
+      data: data.map(d => d.value),   // ✔ FIXED
       borderColor: 'blue',
+      borderWidth: 2,
+      tension: 0.3,
       fill: false
     }]
   };
+
   return <Line data={chartData} />;
 };
 

@@ -43,8 +43,9 @@ function App() {
     setResults(null);
 
     try {
-      const BASE_URL = process.env.REACT_APP_BACKEND_URL;
-      const res = await axios.post(`${BASE_URL}/analyze`, { keywords: arr });
+      - const res = await axios.post("http://localhost:5000/analyze", { keywords: arr });
+      + const res = await axios.post("https://trendlens-production.up.railway.app/analyze", { keywords: arr });
+
 
       setResults(res.data);
       saveHistory(arr);

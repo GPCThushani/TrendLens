@@ -43,8 +43,7 @@ function App() {
     setResults(null);
 
     try {
-      - const res = await axios.post("http://localhost:5000/analyze", { keywords: arr });
-      + const res = await axios.post("https://trendlens-production.up.railway.app/analyze", { keywords: arr });
+      const res = await axios.post("https://trendlens-production.up.railway.app/analyze", { keywords: arr });
 
 
       setResults(res.data);

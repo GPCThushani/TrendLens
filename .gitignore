@@ -23,7 +23,7 @@ logs/
 
 # Ignore massive model files
 backend/models/summarizer/*
-!backend/models/summarizer/README.md   # optional if you want to keep documentation
+!backend/models/summarizer/.gitkeep   # better than README.md
 
 # Ignore cache folders
 __pycache__/

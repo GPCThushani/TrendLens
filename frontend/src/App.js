@@ -43,7 +43,8 @@ function App() {
     setResults(null);
 
     try {
-      const res = await axios.post("https://trendlens-production.up.railway.app/analyze", { keywords: arr });
+      const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+      const res = await axios.post(`${BACKEND_URL}/analyze`, { keywords: arr });
 
 
       setResults(res.data);

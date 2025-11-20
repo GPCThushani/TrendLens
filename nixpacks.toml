@@ -1,27 +1,23 @@
+[project]
+name = "trendlens"
+
 [phases.setup]
-  commands = [
-    # Install Python dependencies
-    "cd backend && . ../.venv/Scripts/activate && pip install -r requirements.txt",
-    # Install Node / React dependencies
-    "cd frontend && npm install"
-  ]
+commands = [
+  "cd backend && pip install -r requirements.txt",
+  "cd frontend && npm install"
+]
 
 [phases.build]
-  commands = [
-    # Build React frontend
-    "cd frontend && npm run build",
-    # No build needed for backend besides being ready to run
-    "cd backend && echo \"Backend ready\""
-  ]
+commands = [
+  "cd frontend && npm run build"
+]
 
 [phases.start]
-  commands = [
-    # Run Gunicorn for your Flask backend
-    "cd backend && . ../.venv/Scripts/activate && gunicorn app:app --bind 0.0.0.0:$PORT"
-  ]
+commands = [
+  "cd backend && gunicorn app:app --bind 0.0.0.0:$PORT"
+]
 
 [[services]]
-  type = "external"       # one “service” that listens
-  ports = ["$PORT"]
-  # Must point to your start command above
-  start_command = "cd backend && . ../.venv/Scripts/activate && gunicorn app:app --bind 0.0.0.0:$PORT"
+type = "external"
+ports = ["$PORT"]
+start_command = "cd backend && gunicorn app:app --bind 0.0.0.0:$PORT"

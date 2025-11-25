@@ -1,8 +1,7 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from backend.ai_models import analyze_trend
-
+from ai_models import analyze_trend
 app = Flask(__name__)
 CORS(app)
 

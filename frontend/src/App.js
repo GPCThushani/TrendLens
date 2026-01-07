@@ -3,11 +3,11 @@ import axios from "axios";
 import TrendChart from "./components/TrendChart";
 import SentimentChart from "./components/SentimentChart";
 import SummaryCard from "./components/SummaryCard";
-import Header from "./components/Header";
+import Header from "./components/Header"; 
 import Footer from "./components/Footer";
 import { jsPDF } from "jspdf";
 import html2canvas from "html2canvas";
-import demo from "./assets/demo.png";
+import "./App.css"; // Make sure to import the new CSS
 
 function App() {
   const [keywords, setKeywords] = useState("");
@@ -16,7 +16,7 @@ function App() {
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
   const [chartType, setChartType] = useState("line");
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(true); // Default to Dark mode for the new theme
   const [period, setPeriod] = useState("12");
 
   // Load search history
@@ -26,13 +26,13 @@ function App() {
   }, []);
 
   const saveHistory = (arr) => {
-    const updated = [...new Set([...arr, ...history])].slice(0, 20);
+    const updated = [...new Set([...arr, ...history])].slice(0, 10); // Keep last 10
     localStorage.setItem("searchHistory", JSON.stringify(updated));
     setHistory(updated);
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if(e) e.preventDefault(); // Handle cases where e is optional
     const arr = keywords.split(",").map((k) => k.trim()).filter(Boolean);
     if (arr.length === 0) {
       setError("Please enter at least one keyword.");
@@ -42,27 +42,32 @@ function App() {
     setLoading(true);
     setResults(null);
 
+    // Scroll to results
+    setTimeout(() => {
+        const resultsEl = document.getElementById("results-section");
+        if(resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+
     try {
-      // --- FIX: Sanitize the Backend URL ---
       let backendUrl = process.env.REACT_APP_BACKEND_URL;
-      
-      // Remove trailing slash if present to prevent double slashes (//)
       if (backendUrl && backendUrl.endsWith("/")) {
         backendUrl = backendUrl.slice(0, -1);
       }
-
-      // Now the URL is safe to append /analyze
       const res = await axios.post(`${backendUrl}/analyze`, { keywords: arr });
-
       setResults(res.data);
       saveHistory(arr);
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch analysis. Try again.");
+      setError("Failed to fetch analysis. server might be sleeping. Try again in 10s.");
       setResults(null);
     }
-
     setLoading(false);
+  };
+
+  // Helper to click history item and search immediately
+  const handleHistoryClick = (kw) => {
+      setKeywords(kw);
+      // Optional: auto-submit logic requires extracting the fetch out of handleSubmit or useEffect
   };
 
   const downloadCSV = (keyword, trendData) => {
@@ -81,8 +86,7 @@ function App() {
   const exportPDF = async () => {
     const input = document.getElementById("pdf-content");
     if (!input) return;
-
-    const canvas = await html2canvas(input);
+    const canvas = await html2canvas(input, { backgroundColor: "#1e1e1e" }); // Capture dark bg
     const imgData = canvas.toDataURL("image/png");
     const pdf = new jsPDF("p", "mm", "a4");
     const imgProps = pdf.getImageProperties(imgData);
@@ -92,174 +96,121 @@ function App() {
     pdf.save("trendlens_report.pdf");
   };
 
-  const appStyle = {
-    fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    backgroundColor: isDarkMode ? "#121212" : "#f9f9f9",
-    color: isDarkMode ? "#fff" : "#000",
-    minHeight: "100vh",
-  };
-
-  const sectionStyle = {
-    padding: "40px 20px",
-    maxWidth: "1200px",
-    margin: "0 auto",
-  };
-
   return (
-    <div style={appStyle}>
-      {/* Header with Dark/Light toggle */}
-      <Header
-        chartType={chartType}
-        setChartType={setChartType}
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
+    <div className="app-container">
+      {/* Note: You can keep your existing Header if you like, 
+         or remove it for a cleaner landing page look.
+         For now, passing props just in case.
+      */}
+      <Header 
+        chartType={chartType} setChartType={setChartType}
+        isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} 
       />
 
-      {/* Landing Section */}
-      <section style={{ ...sectionStyle, textAlign: "center" }}>
-        <h1>Welcome to TrendLens</h1>
-        <p>Your AI-powered market trend analyzer. Explore keyword trends, sentiment, and AI summaries instantly.</p>
-        <div>
-            <img
-              src={demo}
-              alt="Demo Chart Placeholder"
-              style={{ width: "80%", opacity: 0.7 }}
+      {/* --- HERO SECTION --- */}
+      <section className="hero-section">
+        <h1 className="title-gradient">TrendLens AI</h1>
+        <p className="subtitle">
+          Market intelligence powered by Artificial Intelligence. 
+          Discover trends, sentiment, and summaries in seconds.
+        </p>
+
+        <form onSubmit={handleSubmit} className="search-wrapper">
+          <div className="search-container">
+            <span style={{ fontSize: '24px', alignSelf: 'center', marginLeft: '15px' }}>🔍</span>
+            <input
+              type="text"
+              className="search-input"
+              value={keywords}
+              onChange={(e) => setKeywords(e.target.value)}
+              placeholder="e.g. Bitcoin, AI, Sustainable Fashion..."
             />
+            <button type="submit" className="search-btn">Analyze</button>
           </div>
 
-        
-        <button onClick={() => window.scrollTo({ top: 600, behavior: "smooth" })} style={{ padding: "12px 24px", fontSize: "16px", borderRadius: "8px", border: "none", backgroundColor: "#4caf50", color: "#fff", cursor: "pointer" }}>
-          Start Analyzing
-        </button>
-      </section>
-
-      {/* How it works */}
-      <section style={{ ...sectionStyle, textAlign: "center" }}>
-        <h2>How It Works</h2>
-        <div style={{ display: "flex", justifyContent: "center", gap: "40px", flexWrap: "wrap", marginTop: "30px" }}>
-          {["Enter Keywords", "Analyze Trends", "Download Reports"].map((step, idx) => (
-            <div key={idx} style={{ width: "250px", padding: "20px", backgroundColor: isDarkMode ? "#1e1e1e" : "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: "50px", marginBottom: "15px" }}>🔹</div>
-              <h3>{step}</h3>
-              <p>Step {idx+1} description goes here. You can explain briefly how users complete this step.</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Search Form with chart type & period selectors */}
-      <section style={{ ...sectionStyle, textAlign: "center" }}>
-        <form onSubmit={handleSubmit} style={{ display: "flex", justifyContent: "center", gap: "10px", flexWrap: "wrap" }}>
-          <input
-            type="text"
-            value={keywords}
-            onChange={(e) => setKeywords(e.target.value)}
-            placeholder="Enter keywords separated by commas"
-            style={{ flex: 1, minWidth: "250px", maxWidth: "400px", padding: "10px", fontSize: "16px", borderRadius: "8px", border: "1px solid #ccc", textAlign: "center" }}
-          />
-          <select
-            value={chartType}
-            onChange={(e) => setChartType(e.target.value)}
-            style={{ padding: "10px", borderRadius: "8px", cursor: "pointer" }}
-          >
-            <option value="line">Line Chart</option>
-            <option value="bar">Bar Chart</option>
-            <option value="radar">Radar Chart</option>
-          </select>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            style={{ padding: "10px", borderRadius: "8px", cursor: "pointer" }}
-          >
-            <option value="6">Last 6 Months</option>
-            <option value="12">Last 12 Months</option>
-            <option value="24">Last 24 Months</option>
-          </select>
-          <button type="submit" style={{ padding: "10px 20px", fontSize: "16px", backgroundColor: "#4caf50", color: "white", border: "none", borderRadius: "8px", cursor: "pointer" }}>
-            Analyze
-          </button>
+          <div className="controls-row">
+            <select className="custom-select" value={chartType} onChange={(e) => setChartType(e.target.value)}>
+                <option value="line">Line Chart</option>
+                <option value="bar">Bar Chart</option>
+                <option value="radar">Radar Chart</option>
+            </select>
+            <select className="custom-select" value={period} onChange={(e) => setPeriod(e.target.value)}>
+                <option value="6">Last 6 Months</option>
+                <option value="12">Last 1 Year</option>
+                <option value="24">Last 2 Years</option>
+            </select>
+          </div>
         </form>
 
-        {error && <p style={{ color: "red", marginTop: "15px" }}>{error}</p>}
+        {/* History Chips */}
+        {history.length > 0 && (
+            <div className="history-tags">
+                <span style={{color: '#666', fontSize:'14px', alignSelf:'center'}}>Recent:</span>
+                {history.map((kw, i) => (
+                    <span key={i} className="history-chip" onClick={() => handleHistoryClick(kw)}>
+                        {kw}
+                    </span>
+                ))}
+            </div>
+        )}
+
+        {error && <p style={{ color: "#ff6b6b", marginTop: "20px", fontWeight: "bold" }}>{error}</p>}
+        
         {loading && (
-          <div style={{ margin: "20px 0" }}>
-            <div className="spinner"></div>
-            <p>Analyzing… Please wait.</p>
-          </div>
+            <div className="spinner-container">
+                <div className="spinner"></div>
+                <p style={{ marginTop: '15px', color: '#a0a0a0' }}>Crunching data...</p>
+            </div>
         )}
       </section>
 
-      {/* Search History */}
-      {history.length > 0 && (
-        <section style={sectionStyle}>
-          <h3>Search History</h3>
-          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "10px" }}>
-            {history.map((kw, idx) => (
-              <button key={idx} onClick={() => setKeywords(kw)} style={{ margin: "5px", padding: "5px 10px", cursor: "pointer", borderRadius: "5px", border: "1px solid #4caf50", backgroundColor: "#e8f5e9" }}>
-                {kw}
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Results Section */}
+      {/* --- RESULTS DASHBOARD --- */}
       {results && (
-        <section id="pdf-content" style={sectionStyle}>
-          <TrendChart results={results} chartType={chartType} period={period} isDarkMode={isDarkMode} />
-          {Object.keys(results).map((kw) => (
-            <div key={kw} style={{ padding: "25px", borderRadius: "12px", backgroundColor: isDarkMode ? "#1e1e1e" : "#fff", margin: "20px auto" }}>
-              <h2 style={{ textAlign: "center" }}>{kw}</h2>
-              {results[kw].error ? <p style={{ color: "red" }}>{results[kw].error}</p> :
-                <div style={{ display: "flex", flexWrap: "wrap", gap: "30px", justifyContent: "center", alignItems: "center" }}>
-                  <SentimentChart sentiment={results[kw].sentiment || { positive: 0, neutral: 0, negative: 0 }} />
-                  <SummaryCard summary={results[kw].summary || "No summary"} />
+        <div id="results-section">
+            <div className="dashboard-grid" id="pdf-content">
+                
+                {/* 1. Main Trend Chart (Full Width) */}
+                <div className="glass-card full-width">
+                    <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
+                        <h2 style={{margin:0}}>📈 Trend Analysis</h2>
+                        <button onClick={exportPDF} style={{background:'transparent', border:'1px solid #fff', color:'#fff', padding:'5px 10px', borderRadius:'5px', cursor:'pointer'}}>
+                            Export PDF
+                        </button>
+                    </div>
+                    <div style={{marginTop: '20px'}}>
+                        <TrendChart results={results} chartType={chartType} period={period} isDarkMode={true} />
+                    </div>
                 </div>
-              }
-              <button onClick={() => downloadCSV(kw, results[kw].trend_data)} style={{ padding: "8px 12px", backgroundColor: "#1976d2", color: "white", border: "none", borderRadius: "5px", cursor: "pointer", marginTop: "15px" }}>
-                Download Trend CSV
-              </button>
+
+                {/* 2. Individual Keyword Cards */}
+                {Object.keys(results).map((kw) => (
+                    <React.Fragment key={kw}>
+                        {/* Summary Card */}
+                        <div className="glass-card">
+                            <span className="keyword-badge">{kw}</span>
+                            <SummaryCard summary={results[kw].summary || "No summary available."} />
+                        </div>
+
+                        {/* Sentiment Card */}
+                        <div className="glass-card" style={{display:'flex', flexDirection:'column', alignItems:'center'}}>
+                            <h3>Sentiment</h3>
+                            <div style={{width:'100%', height:'250px'}}>
+                                <SentimentChart sentiment={results[kw].sentiment} />
+                            </div>
+                            <button 
+                                onClick={() => downloadCSV(kw, results[kw].trend_data)}
+                                style={{marginTop:'auto', background:'rgba(255,255,255,0.1)', border:'none', color:'#4caf50', padding:'8px', width:'100%', borderRadius:'8px', cursor:'pointer'}}
+                            >
+                                Download CSV
+                            </button>
+                        </div>
+                    </React.Fragment>
+                ))}
             </div>
-          ))}
-          <div style={{ textAlign: "center", marginTop: "20px" }}>
-            <button onClick={exportPDF} style={{ padding: "12px 24px", fontSize: "16px", borderRadius: "8px", border: "none", backgroundColor: "#ff5722", color: "#fff", cursor: "pointer" }}>
-              Export Full Report as PDF
-            </button>
-          </div>
-        </section>
+        </div>
       )}
 
-      {/* Testimonials / Stats */}
-      <section style={{ ...sectionStyle, textAlign: "center" }}>
-        <h2>What Our Users Say</h2>
-        <div style={{ display: "flex", justifyContent: "center", gap: "40px", flexWrap: "wrap", marginTop: "30px" }}>
-          {["500+ Keywords Analyzed", "200+ Trend Reports Generated", "Trusted by Marketers"].map((stat, idx) => (
-            <div key={idx} style={{ width: "250px", padding: "20px", backgroundColor: isDarkMode ? "#1e1e1e" : "#fff", borderRadius: "12px", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-              <div style={{ fontSize: "40px", marginBottom: "10px" }}>⭐</div>
-              <h3>{stat}</h3>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Footer */}
       <Footer isDarkMode={isDarkMode} />
-      {/* Spinner CSS */}
-      <style>{`
-        .spinner {
-          border: 6px solid #f3f3f3;
-          border-top: 6px solid #4caf50;
-          border-radius: 50%;
-          width: 50px;
-          height: 50px;
-          animation: spin 1s linear infinite;
-          margin: auto;
-        }
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }

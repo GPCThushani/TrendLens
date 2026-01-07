@@ -1,4 +1,3 @@
-// TrendChart.js
 import React, { useRef } from "react";
 import {
   Chart as ChartJS,
@@ -11,9 +10,11 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler, // <--- 1. Import Filler
 } from "chart.js";
 import { Line, Bar, Radar } from "react-chartjs-2";
 
+// 2. Register Filler (Prevents crash on some chart types)
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -23,26 +24,41 @@ ChartJS.register(
   RadialLinearScale,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) => {
   const chartRef = useRef(null);
-  if (!results || Object.keys(results).length === 0) return <p>No trend data available.</p>;
 
-  // Use the last N months based on period
-  const labels = results[Object.keys(results)[0]].trend_data
-    .slice(-period)
-    .map(d => d.date);
+  if (!results || Object.keys(results).length === 0) {
+    return <p style={{ textAlign: "center", color: isDarkMode ? "#ccc" : "#666" }}>No trend data available.</p>;
+  }
 
-  const datasets = Object.keys(results).map((kw, idx) => ({
+  // 3. SAFETY: Filter only keywords that actually have valid trend_data
+  const validKeys = Object.keys(results).filter(
+    (key) => results[key] && Array.isArray(results[key].trend_data) && results[key].trend_data.length > 0
+  );
+
+  if (validKeys.length === 0) {
+    return <p style={{ textAlign: "center", color: "red" }}>All keywords failed to load data.</p>;
+  }
+
+  // Use the first valid keyword to get the date labels
+  const firstKey = validKeys[0];
+  const labels = results[firstKey].trend_data
+    .slice(-parseInt(period))
+    .map((d) => d.date);
+
+  const datasets = validKeys.map((kw, idx) => ({
     label: kw,
-    data: results[kw].trend_data.slice(-period).map(d => d.value),
+    data: results[kw].trend_data.slice(-parseInt(period)).map((d) => d.value),
     borderColor: `hsl(${idx * 60}, 70%, 50%)`,
     backgroundColor: `hsla(${idx * 60}, 70%, 50%, 0.5)`,
     borderWidth: 2,
     tension: 0.3,
-    fill: chartType === "line" ? false : true,
+    // Fill area for Radar/Bar, but usually not for Line unless desired
+    fill: chartType !== "line", 
   }));
 
   const chartData = { labels, datasets };
@@ -59,8 +75,18 @@ const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) 
       y: {
         beginAtZero: true,
         ticks: { color: isDarkMode ? "#fff" : "#000" },
+        grid: { color: isDarkMode ? "#444" : "#e5e5e5" }
       },
-      x: { ticks: { color: isDarkMode ? "#fff" : "#000" } },
+      x: { 
+        ticks: { color: isDarkMode ? "#fff" : "#000" },
+        grid: { color: isDarkMode ? "#444" : "#e5e5e5" }
+      },
+      r: { // Radar chart specific scale
+        angleLines: { color: isDarkMode ? "#666" : "#ccc" },
+        grid: { color: isDarkMode ? "#444" : "#ddd" },
+        pointLabels: { color: isDarkMode ? "#fff" : "#000" },
+        ticks: { backdropColor: "transparent" }
+      }
     },
   };
 
@@ -83,7 +109,7 @@ const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) 
       <div style={{ height: "500px", position: "relative" }}>
         <ChartComponent ref={chartRef} data={chartData} options={options} />
       </div>
-      <div style={{ textAlign: "center", marginTop: "10px" }}>
+      <div style={{ textAlign: "center", marginTop: "15px" }}>
         <button
           onClick={downloadChart}
           style={{
@@ -99,7 +125,7 @@ const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) 
           onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#4caf50")}
         >
-          Download {chartType.charAt(0).toUpperCase() + chartType.slice(1)} Chart
+          Download Chart
         </button>
       </div>
     </div>

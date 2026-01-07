@@ -1,30 +1,39 @@
 import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+# Ensure this import matches your filename (ai_models.py)
 from ai_models import analyze_trend
+
 app = Flask(__name__)
-CORS(app)
+
+# Allow all origins (*) to prevent CORS errors between Vercel Frontend & Backend
+CORS(app, resources={r"/*": {"origins": "*"}})
+
+@app.route('/', methods=['GET'])
+def home():
+    return "TrendLens Backend is Running!", 200
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
     data = request.get_json() or {}
-    # accept either {"text":"..." } OR {"keywords":["a","b"]}
+    
+    # Handle input: accept either {"text": "..."} OR {"keywords": ["a", "b"]}
     if 'keywords' in data and isinstance(data['keywords'], list):
         keywords = data['keywords']
     else:
         text = data.get('text') or data.get('keyword') or ''
         if not text:
-            return jsonify({'error':'No keyword provided'}), 400
+            return jsonify({'error': 'No keyword provided'}), 400
         keywords = [text]
 
     results = {}
     for kw in keywords:
         try:
             res = analyze_trend(kw)
-            # normalize keys
+            # Normalize keys for frontend
             results[kw] = {
                 'trend_data': res.get('trend_data', []),
-                'sentiment': res.get('sentiment', {'positive':0,'neutral':0,'negative':0}),
+                'sentiment': res.get('sentiment', {'positive': 0, 'neutral': 0, 'negative': 0}),
                 'summary': res.get('summary', '')
             }
         except Exception as e:
@@ -32,6 +41,8 @@ def analyze():
 
     return jsonify(results)
 
+# This block allows you to run "python app.py" locally.
+# Vercel will ignore this and use its own WSGI server automatically.
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))  # Railway sets PORT automatically
+    port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)

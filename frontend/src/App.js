@@ -43,9 +43,16 @@ function App() {
     setResults(null);
 
     try {
-      const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-      const res = await axios.post(`${BACKEND_URL}/analyze`, { keywords: arr });
+      // --- FIX: Sanitize the Backend URL ---
+      let backendUrl = process.env.REACT_APP_BACKEND_URL;
+      
+      // Remove trailing slash if present to prevent double slashes (//)
+      if (backendUrl && backendUrl.endsWith("/")) {
+        backendUrl = backendUrl.slice(0, -1);
+      }
 
+      // Now the URL is safe to append /analyze
+      const res = await axios.post(`${backendUrl}/analyze`, { keywords: arr });
 
       setResults(res.data);
       saveHistory(arr);

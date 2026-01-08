@@ -24,14 +24,16 @@ const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) 
 
   if (!results || Object.keys(results).length === 0) return <p>No data.</p>;
 
+  // Filter keys that actually have data
   const validKeys = Object.keys(results).filter(k => results[k] && results[k].trend_data);
   if (validKeys.length === 0) return <p>Error loading data.</p>;
 
-  // 1. Setup Labels
+  // 1. Setup Labels (History + Forecast dates)
   const firstKey = validKeys[0];
   const historicalData = results[firstKey].trend_data.slice(-parseInt(period));
   const historicalLabels = historicalData.map(d => d.date);
   
+  // Generate next 3 months for forecast labels
   const lastDate = new Date(historicalLabels[historicalLabels.length - 1]);
   const futureLabels = [1, 2, 3].map(i => {
     const d = new Date(lastDate);
@@ -45,37 +47,41 @@ const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) 
   const datasets = [];
 
   validKeys.forEach((kw, idx) => {
-    const baseColor = `hsl(${idx * 60 + 200}, 70%, 50%)`;
+    // Generate a color for this keyword
+    const baseColor = `hsl(${idx * 60 + 200}, 70%, 50%)`; 
     
+    // Historical Data Points
     const histValues = results[kw].trend_data.slice(-parseInt(period)).map(d => d.value);
     const forecastValues = results[kw].forecast || [];
     
-    // Pad forecast array so it starts exactly where history ends
+    // Create an array for forecast that starts with nulls so it lines up
     const forecastPlot = Array(histValues.length - 1).fill(null);
-    forecastPlot.push(histValues[histValues.length - 1]);
+    // Connect the last historical point so the line is continuous
+    forecastPlot.push(histValues[histValues.length - 1]); 
     forecastPlot.push(...forecastValues);
 
-    // Historical Line (Solid)
+    // --- Dataset 1: Historical Line (Solid) ---
     datasets.push({
       label: `${kw}`,
-      data: [...histValues, null, null, null],
+      data: [...histValues, null, null, null], // Pad end with nulls
       borderColor: baseColor,
       backgroundColor: baseColor,
-      borderWidth: 3, // Thicker line
-      tension: 0.4,   // Smoother curve
-      pointRadius: 0, // Hide points for cleaner look
-      fill: false,
+      borderWidth: 2,
+      tension: 0.3,
+      pointRadius: 2,
+      fill: chartType !== "line", // Fill only if not line chart
     });
 
-    // Forecast Line (Distinct Style)
+    // --- Dataset 2: Forecast Line (High Visibility) ---
     datasets.push({
-      label: `${kw} (Forecast)`,
+      label: `${kw} Forecast`,
       data: forecastPlot,
-      borderColor: '#ffffff', // Make it WHITE to stand out against colored lines
-      borderDash: [5, 5],     // Dotted
-      borderWidth: 2,
-      pointRadius: 4,         // Show points for predictions
-      pointBackgroundColor: baseColor,
+      borderColor: '#00ffff', // BRIGHT CYAN for visibility
+      borderDash: [10, 6],    // Big dashes
+      borderWidth: 3,         // Thicker line
+      pointRadius: 5,         // Visible dots
+      pointBackgroundColor: '#fff',
+      pointBorderColor: '#00ffff',
       fill: false,
     });
   });
@@ -88,17 +94,29 @@ const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) 
     interaction: { mode: 'index', intersect: false },
     plugins: {
       legend: { position: "top", labels: { color: isDarkMode ? "#fff" : "#000" } },
-      title: { display: true, text: "Historical vs. AI Forecast", color: isDarkMode ? "#fff" : "#000" },
+      title: { display: true, text: "Trend History & AI Forecast", color: isDarkMode ? "#fff" : "#000" },
     },
     scales: {
-      y: { ticks: { color: isDarkMode ? "#bbb" : "#666" }, grid: { color: isDarkMode ? "#333" : "#ddd" } },
-      x: { ticks: { color: isDarkMode ? "#bbb" : "#666" }, grid: { color: isDarkMode ? "#333" : "#ddd" } }
+      y: { 
+        beginAtZero: true,
+        ticks: { color: isDarkMode ? "#bbb" : "#666" }, 
+        grid: { color: isDarkMode ? "#333" : "#ddd" } 
+      },
+      x: { 
+        ticks: { color: isDarkMode ? "#bbb" : "#666" }, 
+        grid: { color: isDarkMode ? "#333" : "#ddd" } 
+      }
     },
   };
 
+  // Render chart based on type
+  let ChartComponent = Line;
+  if (chartType === "bar") ChartComponent = Bar;
+  else if (chartType === "radar") ChartComponent = Radar;
+
   return (
     <div style={{ height: "400px", width: "100%", padding: "10px" }}>
-       <Line ref={chartRef} data={data} options={options} />
+       <ChartComponent ref={chartRef} data={data} options={options} />
     </div>
   );
 };

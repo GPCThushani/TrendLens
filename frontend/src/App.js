@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Search, Plus, X, Sun, Moon, Download, FileText, TrendingUp, PieChart, MessageSquare, Clock } from 'lucide-react';
+import { Search, Plus, X, Download, FileText, TrendingUp, PieChart, MessageSquare, Clock } from 'lucide-react';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -9,6 +9,7 @@ import TrendChart from "./components/TrendChart";
 import SentimentChart from "./components/SentimentChart";
 import SummaryCard from "./components/SummaryCard";
 import RelatedKeywords from "./components/RelatedKeywords";
+import Header from "./components/Header";
 import Footer from "./components/Footer";
 import "./App.css";
 
@@ -24,12 +25,14 @@ function App() {
   const [period, setPeriod] = useState("12");
   const [isDarkMode, setIsDarkMode] = useState(true);
 
+  // Init
   useEffect(() => {
     const savedHistory = JSON.parse(localStorage.getItem("searchHistory") || "[]");
     setHistory(savedHistory);
     document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
   }, [isDarkMode]);
 
+  // Input Handlers
   const addInputField = () => {
     if (keywordInputs.length < 5) setKeywordInputs([...keywordInputs, ""]);
   };
@@ -48,6 +51,7 @@ function App() {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
+    
     const validKeywords = keywordInputs.map(k => k.trim()).filter(Boolean);
 
     if (validKeywords.length === 0) {
@@ -66,13 +70,16 @@ function App() {
       }
 
       const res = await axios.post(`${backendUrl}/analyze`, { keywords: validKeywords });
+      
       setResults(res.data);
       
+      // Save History
       const term = validKeywords.join(", ");
       const updated = [...new Set([term, ...history])].slice(0, 10);
       localStorage.setItem("searchHistory", JSON.stringify(updated));
       setHistory(updated);
       
+      // Scroll
       setTimeout(() => {
         document.getElementById("dashboard")?.scrollIntoView({ behavior: 'smooth' });
       }, 500);
@@ -105,38 +112,26 @@ function App() {
     <div className={`app ${isDarkMode ? 'dark' : 'light'}`}>
       <div className="container">
         
-        {/* --- HEADER (Logo Left, Toggle Right) --- */}
-        <header className="header" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', paddingBottom:'2rem' }}>
-          
-          {/* LOGO SECTION */}
-          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-            <div style={{ 
-              background: 'linear-gradient(135deg, #667eea, #764ba2)', 
-              width:'40px', height:'40px', borderRadius:'10px', 
-              display:'flex', alignItems:'center', justifyContent:'center', color:'white' 
-            }}>
-              <TrendingUp size={24} />
-            </div>
-            <span className="title" style={{ fontSize:'1.8rem', margin:0 }}>Trend<span className="gradient-text">Lens</span></span>
-          </div>
+        {/* Header (Updated with new Logo logic) */}
+        <Header 
+          isDarkMode={isDarkMode} 
+          setIsDarkMode={setIsDarkMode} 
+        />
 
-          <button onClick={() => setIsDarkMode(!isDarkMode)} className="theme-btn">
-            {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
-          </button>
-        </header>
-
-        {/* --- SEARCH SECTION --- */}
+        {/* --- HERO / SEARCH SECTION --- */}
         <section className="search-section">
           <div style={{ textAlign:'center', marginBottom:'30px' }}>
-             <h1 style={{ fontSize:'2.5rem', fontWeight:'800', marginBottom:'10px' }}>Market Intelligence AI</h1>
+             <h1 style={{ fontSize:'2.5rem', fontWeight:'800', marginBottom:'10px' }}>
+               Market Intelligence <span className="gradient-text">AI</span>
+             </h1>
              <p className="subtitle">Analyze trends, forecast growth & discover niches.</p>
           </div>
 
-          {/* Time Period moved here */}
+          {/* Time Period Selector - Moved Here */}
           <div style={{ display:'flex', justifyContent:'center', marginBottom:'20px' }}>
-             <div className="glass-card" style={{ padding:'5px 15px', borderRadius:'50px', display:'flex', alignItems:'center', gap:'10px' }}>
+             <div className="glass-card" style={{ padding:'8px 20px', borderRadius:'50px', display:'flex', alignItems:'center', gap:'10px' }}>
                 <Clock size={16} color="var(--accent-primary)" />
-                <span style={{ fontSize:'0.9rem' }}>Time Range:</span>
+                <span style={{ fontSize:'0.9rem', whiteSpace:'nowrap' }}>Time Range:</span>
                 <select 
                   className="custom-select" 
                   value={period} 
@@ -151,6 +146,7 @@ function App() {
              </div>
           </div>
 
+          {/* Search Inputs */}
           {keywordInputs.map((kw, index) => (
             <div key={index} className="search-row">
               <input 
@@ -169,6 +165,7 @@ function App() {
             </div>
           ))}
 
+          {/* Buttons */}
           <div className="action-row">
             {keywordInputs.length < 5 && (
               <button onClick={addInputField} className="btn-secondary">
@@ -182,10 +179,10 @@ function App() {
           
           {error && <div className="error-msg">{error}</div>}
 
-          {/* History Chips */}
+          {/* History */}
           {history.length > 0 && (
             <div className="history-section">
-              <span className="history-label">Recent:</span>
+              <span className="history-label">Recent Searches:</span>
               <div className="tags-container">
                 {history.map((term, i) => (
                   <span key={i} className="tag" onClick={() => {
@@ -224,22 +221,34 @@ function App() {
               <RelatedKeywords data={results} />
             </div>
 
-            {/* Cards Loop - Fixed Layout Overlap */}
+            {/* Cards Loop - Grid Layout Fixed with minmax to prevent overlap */}
             {Object.keys(results).map((kw) => (
               <React.Fragment key={kw}>
-                {/* Sentiment (Larger Box) */}
-                <div className="glass-card" style={{ textAlign: 'center', minHeight:'350px' }}>
+                
+                {/* Sentiment - Fixed height/width to prevent overlap */}
+                <div className="glass-card" style={{ 
+                    textAlign: 'center', 
+                    minHeight:'450px',
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    justifyContent:'space-between' 
+                }}>
                   <div className="card-header" style={{justifyContent:'center'}}>
                     <h3 className="card-title"><PieChart size={18}/> {kw} Sentiment</h3>
                   </div>
-                  {/* Fixed container size to prevent chart squishing */}
-                  <div style={{ height: '250px', width:'100%', position:'relative', display:'flex', justifyContent:'center' }}>
+                  
+                  {/* Container ensures pie chart doesn't grow uncontrollably */}
+                  <div style={{ height: '250px', width: '100%', display:'flex', justifyContent:'center', position:'relative' }}>
                     <SentimentChart sentiment={results[kw].sentiment} />
                   </div>
+                  
+                  <button onClick={() => {}} className="btn-secondary" style={{marginTop:'20px', width:'100%'}}>
+                     Download CSV
+                  </button>
                 </div>
 
                 {/* Summary */}
-                <div className="glass-card" style={{ minHeight:'350px' }}>
+                <div className="glass-card" style={{ minHeight:'450px' }}>
                   <div className="card-header">
                     <span className="tag" style={{background: 'var(--accent-primary)', color:'white'}}>{kw}</span>
                     <MessageSquare size={18} style={{opacity:0.7}}/>

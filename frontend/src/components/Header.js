@@ -1,54 +1,45 @@
-import React from "react";
-import logo from "../assets/logo.png"; // relative path from Header.js
+import React from 'react';
+import { Sun, Moon } from 'lucide-react';
+import logo from '../assets/logo.png'; // Ensure this path is correct
 
 const Header = ({ isDarkMode, setIsDarkMode }) => {
-  const headerStyle = {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "15px 30px",
-    backgroundColor: isDarkMode ? "#777C6D" : "#CBCBCB",
-    color: "#000B58",
-    position: "sticky",
-    top: 0,
-    zIndex: 1000,
-  };
-
-  const logoStyle = {
-    display: "flex",
-    alignItems: "center",
-    gap: "10px",
-  };
-
-  const logoImageStyle = {
-    width: "100px",
-    height: "100px",
-    objectFit: "contain",
-    borderRadius: "8px",
-    backgroundColor: "#fff", 
-  };
-
-  const toggleButtonStyle = {
-    padding: "8px 12px",
-    borderRadius: "6px",
-    border: "none",
-    cursor: "pointer",
-    backgroundColor: isDarkMode ? "#778873" : "#777C6D",
-    color: "#fff",
-  };
-
   return (
-    <header style={headerStyle}>
-      <div style={logoStyle}>
-        <img src={logo} alt="TrendLens Logo" style={logoImageStyle} />
-        <h2>TrendLens</h2>
+    <header className="header" style={{ 
+      display: 'flex', 
+      justifyContent: 'space-between', 
+      alignItems: 'center', 
+      padding: '20px 0',
+      position: 'relative', 
+      marginBottom: '40px'
+    }}>
+      
+      {/* LEFT: Logo Only */}
+      <div style={{ zIndex: 10 }}>
+        <img 
+          src={logo} 
+          alt="TrendLens Logo" 
+          style={{ width: '50px', height: '50px', objectFit: 'contain' }} 
+        />
       </div>
-      <button
-        style={toggleButtonStyle}
-        onClick={() => setIsDarkMode(!isDarkMode)}
-      >
-        {isDarkMode ? "Light Mode" : "Dark Mode"}
-      </button>
+
+      {/* CENTER: Title (Absolute Positioning) */}
+      <div style={{ 
+        position: 'absolute', 
+        left: '50%', 
+        transform: 'translateX(-50%)',
+        textAlign: 'center'
+      }}>
+        <h1 className="title" style={{ fontSize: '2.5rem', margin: 0, letterSpacing: '-1px' }}>
+          Trend<span className="gradient-text">Lens</span>
+        </h1>
+      </div>
+
+      {/* RIGHT: Theme Toggle */}
+      <div style={{ zIndex: 10 }}>
+        <button onClick={() => setIsDarkMode(!isDarkMode)} className="theme-btn">
+          {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+      </div>
     </header>
   );
 };

@@ -1,47 +1,65 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { Search, Plus, X, Sun, Moon, Download, FileText, TrendingUp, PieChart, MessageSquare } from 'lucide-react';
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
+
+// Components
 import TrendChart from "./components/TrendChart";
 import SentimentChart from "./components/SentimentChart";
 import SummaryCard from "./components/SummaryCard";
-import RelatedKeywords from "./components/RelatedKeywords"; // New Component
-import Header from "./components/Header";
+import RelatedKeywords from "./components/RelatedKeywords";
 import Footer from "./components/Footer";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
-import "./App.css"; // Ensure you created this file from the previous step
+import "./App.css";
 
 function App() {
-  const [keywords, setKeywords] = useState("");
+  // State for multiple keyword inputs (Array of strings)
+  const [keywordInputs, setKeywordInputs] = useState([""]);
+  
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [history, setHistory] = useState([]);
+  
+  // Theme & Chart Settings
   const [chartType, setChartType] = useState("line");
-  const [isDarkMode, setIsDarkMode] = useState(true); // Default to Dark for new theme
   const [period, setPeriod] = useState("12");
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
-  // Load search history on mount
+  // Initialize
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("searchHistory") || "[]");
-    setHistory(saved);
-  }, []);
+    const savedHistory = JSON.parse(localStorage.getItem("searchHistory") || "[]");
+    setHistory(savedHistory);
+    // Apply theme to body
+    document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
 
-  // Save history to local storage
-  const saveHistory = (arr) => {
-    // Join array to string for history display if multiple keywords
-    const keywordString = arr.join(", ");
-    const updated = [...new Set([keywordString, ...history])].slice(0, 10);
-    localStorage.setItem("searchHistory", JSON.stringify(updated));
-    setHistory(updated);
+  // --- Input Handlers ---
+  const addInputField = () => {
+    if (keywordInputs.length < 5) setKeywordInputs([...keywordInputs, ""]);
   };
 
+  const removeInputField = (index) => {
+    if (keywordInputs.length > 1) {
+      const newInputs = keywordInputs.filter((_, i) => i !== index);
+      setKeywordInputs(newInputs);
+    }
+  };
+
+  const handleInputChange = (index, value) => {
+    const newInputs = [...keywordInputs];
+    newInputs[index] = value;
+    setKeywordInputs(newInputs);
+  };
+
+  // --- API Logic ---
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     
-    // Split by comma to support comparison mode (e.g., "AI, Crypto")
-    const arr = keywords.split(",").map((k) => k.trim()).filter(Boolean);
-    
-    if (arr.length === 0) {
+    // Filter out empty strings
+    const validKeywords = keywordInputs.map(k => k.trim()).filter(Boolean);
+
+    if (validKeywords.length === 0) {
       setError("Please enter at least one keyword.");
       return;
     }
@@ -50,234 +68,179 @@ function App() {
     setLoading(true);
     setResults(null);
 
-    // Scroll to results area smoothly
-    setTimeout(() => {
-      const resultsEl = document.getElementById("results-section");
-      if (resultsEl) resultsEl.scrollIntoView({ behavior: "smooth" });
-    }, 100);
-
     try {
       let backendUrl = process.env.REACT_APP_BACKEND_URL;
-      
-      // Safety: Remove trailing slash to prevent double-slash errors
       if (backendUrl && backendUrl.endsWith("/")) {
         backendUrl = backendUrl.slice(0, -1);
       }
 
-      // Send the array of keywords to the backend
-      const res = await axios.post(`${backendUrl}/analyze`, { keywords: arr });
+      // Call your Real Backend
+      const res = await axios.post(`${backendUrl}/analyze`, { keywords: validKeywords });
       
       setResults(res.data);
-      saveHistory(arr);
+      saveHistory(validKeywords);
+      
+      // Scroll to results
+      setTimeout(() => {
+        document.getElementById("dashboard")?.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+
     } catch (err) {
       console.error(err);
-      setError("Failed to fetch analysis. The server might be sleeping (Free Tier). Please try again in 10 seconds.");
-      setResults(null);
+      setError("Failed to fetch analysis. Server might be sleeping. Try again in a moment.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
-  // Handle clicking a history chip to re-search
-  const handleHistoryClick = (kw) => {
-    setKeywords(kw);
-    // You can optionally auto-submit here if you refactor the fetch logic
+  const saveHistory = (keywords) => {
+    const term = keywords.join(", ");
+    const updated = [...new Set([term, ...history])].slice(0, 10);
+    localStorage.setItem("searchHistory", JSON.stringify(updated));
+    setHistory(updated);
   };
 
-  const downloadCSV = (keyword, trendData) => {
-    if (!trendData || trendData.length === 0) return;
-    // Filter data based on selected period
-    const filteredData = trendData.slice(-parseInt(period));
-    
-    const headers = ["Date", "Value"];
-    const rows = filteredData.map((d) => [d.date, d.value]);
-    const csvContent = [headers, ...rows].map((e) => e.join(",")).join("\n");
-    
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.setAttribute("download", `${keyword}_trend.csv`);
-    link.click();
-  };
-
+  // --- Exports ---
   const exportPDF = async () => {
-    const input = document.getElementById("pdf-content");
+    const input = document.getElementById("dashboard");
     if (!input) return;
-    
-    // Capture with dark background color
-    const canvas = await html2canvas(input, { backgroundColor: "#0f172a" });
+    const canvas = await html2canvas(input, { 
+      backgroundColor: isDarkMode ? "#0f0f23" : "#f8f9fa",
+      scale: 2 
+    });
     const imgData = canvas.toDataURL("image/png");
-    
     const pdf = new jsPDF("p", "mm", "a4");
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-    
-    pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-    pdf.save("trendlens_report.pdf");
+    const imgWidth = 210;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    pdf.addImage(imgData, "PNG", 0, 0, imgWidth, imgHeight);
+    pdf.save("trendlens-report.pdf");
   };
 
   return (
-    <div className="app-container">
-      {/* Header */}
-      <Header
-        chartType={chartType}
-        setChartType={setChartType}
-        isDarkMode={isDarkMode}
-        setIsDarkMode={setIsDarkMode}
-      />
+    <div className={`app ${isDarkMode ? 'dark' : 'light'}`}>
+      <div className="container">
+        
+        {/* Header */}
+        <header className="header">
+          <div className="header-top">
+            <button onClick={() => setIsDarkMode(!isDarkMode)} className="theme-btn">
+              {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+            </button>
+          </div>
+          <h1 className="title">Trend<span className="gradient-text">Lens</span></h1>
+          <p className="subtitle">AI-Powered Market Intelligence & Forecasts</p>
+        </header>
 
-      {/* --- HERO SECTION --- */}
-      <section className="hero-section">
-        <h1 className="title-gradient">TrendLens AI</h1>
-        <p className="subtitle">
-          Advanced market intelligence. Compare trends, forecast growth, 
-          and discover rising niches in seconds.
-        </p>
+        {/* Search Section */}
+        <section className="search-section">
+          {keywordInputs.map((kw, index) => (
+            <div key={index} className="search-row">
+              <input 
+                type="text" 
+                className="search-input"
+                placeholder={`Enter keyword ${index + 1} (e.g. AI, Crypto)...`}
+                value={kw}
+                onChange={(e) => handleInputChange(index, e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+              />
+              {keywordInputs.length > 1 && (
+                <button onClick={() => removeInputField(index)} className="icon-btn">
+                  <X size={20} />
+                </button>
+              )}
+            </div>
+          ))}
 
-        <form onSubmit={handleSubmit} className="search-wrapper">
-          <div className="search-container">
-            <span style={{ fontSize: "24px", alignSelf: "center", marginLeft: "15px" }}>🔍</span>
-            <input
-              type="text"
-              className="search-input"
-              value={keywords}
-              onChange={(e) => setKeywords(e.target.value)}
-              placeholder="Enter keywords (e.g. Bitcoin, Gold)..."
-            />
-            <button type="submit" className="search-btn">
-              Analyze
+          <div className="action-row">
+            {keywordInputs.length < 5 && (
+              <button onClick={addInputField} className="btn-secondary">
+                <Plus size={18} /> Compare
+              </button>
+            )}
+            <button onClick={handleSubmit} disabled={loading} className="btn-primary">
+              {loading ? <div className="loading-spinner"></div> : <><Search size={20} /> Analyze Trends</>}
             </button>
           </div>
 
-          <div className="controls-row">
-            <select
-              className="custom-select"
-              value={chartType}
-              onChange={(e) => setChartType(e.target.value)}
-            >
-              <option value="line">Line Chart</option>
-              <option value="bar">Bar Chart</option>
-              <option value="radar">Radar Chart</option>
-            </select>
-            <select
-              className="custom-select"
-              value={period}
-              onChange={(e) => setPeriod(e.target.value)}
-            >
-              <option value="6">Last 6 Months</option>
-              <option value="12">Last 1 Year</option>
-              <option value="24">Last 2 Years</option>
-            </select>
-          </div>
-        </form>
+          {error && <div className="error-msg">{error}</div>}
 
-        {/* History Chips */}
-        {history.length > 0 && (
-          <div className="history-tags">
-            <span style={{ color: "#666", fontSize: "14px", alignSelf: "center" }}>
-              Recent:
-            </span>
-            {history.map((kw, i) => (
-              <span key={i} className="history-chip" onClick={() => handleHistoryClick(kw)}>
-                {kw}
-              </span>
-            ))}
-          </div>
-        )}
+          {history.length > 0 && (
+            <div className="history-section">
+              <span className="history-label">Recent Searches:</span>
+              <div className="tags-container">
+                {history.map((term, i) => (
+                  <span key={i} className="tag" onClick={() => {
+                    setKeywordInputs(term.split(", "));
+                  }}>
+                    {term}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
 
-        {error && (
-          <p style={{ color: "#ff6b6b", marginTop: "20px", fontWeight: "bold" }}>
-            {error}
-          </p>
-        )}
-
-        {loading && (
-          <div className="spinner-container">
-            <div className="spinner"></div>
-            <p style={{ marginTop: "15px", color: "#a0a0a0" }}>
-              Crunching big data...
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* --- RESULTS DASHBOARD --- */}
-      {results && (
-        <div id="results-section">
-          <div className="dashboard-grid" id="pdf-content">
+        {/* Dashboard Results */}
+        {results && (
+          <div id="dashboard" className="dashboard-grid">
             
-            {/* 1. Main Trend Chart (Full Width) with Forecast */}
+            {/* Header Actions */}
+            <div className="full-width" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+              <h2 className="card-title"><TrendingUp className="gradient-text"/> Analysis Report</h2>
+              <button onClick={exportPDF} className="btn-secondary" style={{width: 'auto'}}>
+                <FileText size={16}/> Export PDF
+              </button>
+            </div>
+
+            {/* Main Trend Chart */}
             <div className="glass-card full-width">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <h2 style={{ margin: 0 }}>📈 Comparison & Forecast</h2>
-                <button
-                  onClick={exportPDF}
-                  style={{
-                    background: "transparent",
-                    border: "1px solid #fff",
-                    color: "#fff",
-                    padding: "5px 10px",
-                    borderRadius: "5px",
-                    cursor: "pointer",
-                  }}
+              <div className="card-header">
+                <h3 className="card-title">📉 Trend Forecast</h3>
+                <select 
+                  style={{ background:'transparent', color: 'inherit', border:'none', outline:'none', cursor:'pointer' }}
+                  value={period} onChange={(e) => setPeriod(e.target.value)}
                 >
-                  Export Report (PDF)
-                </button>
+                  <option value="6">Last 6 Months</option>
+                  <option value="12">Last 1 Year</option>
+                  <option value="24">Last 2 Years</option>
+                </select>
               </div>
-              <div style={{ marginTop: "20px" }}>
-                <TrendChart
-                  results={results}
-                  chartType={chartType}
-                  period={period}
-                  isDarkMode={true}
-                />
-              </div>
+              <TrendChart results={results} chartType={chartType} period={period} isDarkMode={isDarkMode} />
             </div>
 
-            {/* 2. Related Keywords (New Component) */}
+            {/* Related Keywords */}
             <div className="full-width">
-               <RelatedKeywords data={results} />
+              <RelatedKeywords data={results} />
             </div>
 
-            {/* 3. Detailed Cards for each Keyword */}
+            {/* Cards Loop */}
             {Object.keys(results).map((kw) => (
               <React.Fragment key={kw}>
-                {/* Summary Card */}
+                {/* Summary */}
                 <div className="glass-card">
-                  <span className="keyword-badge">{kw}</span>
+                  <div className="card-header">
+                    <span className="tag" style={{background: 'var(--accent-primary)', color:'white'}}>{kw}</span>
+                    <MessageSquare size={18} style={{opacity:0.7}}/>
+                  </div>
                   <SummaryCard summary={results[kw].summary || "No summary available."} />
                 </div>
 
-                {/* Sentiment Card */}
-                <div className="glass-card" style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                  <h3>Sentiment Analysis</h3>
-                  <div style={{ width: "100%", height: "250px" }}>
+                {/* Sentiment */}
+                <div className="glass-card" style={{ textAlign: 'center' }}>
+                  <div className="card-header" style={{justifyContent:'center'}}>
+                    <h3 className="card-title"><PieChart size={18}/> Sentiment</h3>
+                  </div>
+                  <div style={{ height: '220px', width:'100%', display:'flex', justifyContent:'center' }}>
                     <SentimentChart sentiment={results[kw].sentiment} />
                   </div>
-                  <button
-                    onClick={() => downloadCSV(kw, results[kw].trend_data)}
-                    style={{
-                      marginTop: "auto",
-                      background: "rgba(255,255,255,0.1)",
-                      border: "none",
-                      color: "#4caf50",
-                      padding: "8px",
-                      width: "100%",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Download CSV
-                  </button>
                 </div>
               </React.Fragment>
             ))}
-          </div>
-        </div>
-      )}
 
-      <Footer isDarkMode={isDarkMode} />
+          </div>
+        )}
+      </div>
+      <Footer />
     </div>
   );
 }

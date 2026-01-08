@@ -1,37 +1,22 @@
-import React from "react";
+import React from 'react';
+import { Twitter, Linkedin, Github, Mail } from 'lucide-react';
 
-const Footer = ({ isDarkMode }) => {
-  const footerStyle = {
-    padding: "20px",
-    textAlign: "center",
-    backgroundColor: isDarkMode ? "#1f1f1f" : "#333", // matching header colors
-    color: "#fff",
-    marginTop: "40px",
-  };
-
-  const linkStyle = {
-    margin: "0 10px",
-    color: "#fff",
-    textDecoration: "underline",
-    cursor: "pointer",
-    background: "none",
-    border: "none",
-    fontSize: "14px",
-  };
+const Footer = () => {
+  const currentYear = new Date().getFullYear();
 
   return (
-    <footer style={footerStyle}>
-      <button style={linkStyle} onClick={() => alert("Privacy Policy page")}>
-        Privacy Policy
-      </button>
-      |
-      <button style={linkStyle} onClick={() => alert("Terms page")}>
-        Terms
-      </button>
-      |
-      <button style={linkStyle} onClick={() => alert("Contact page")}>
-        Contact
-      </button>
+    <footer className="footer">
+      <div className="container">
+        <div className="footer-socials">
+          <a href="#" className="social-icon" title="Twitter"><Twitter size={20} /></a>
+          <a href="#" className="social-icon" title="LinkedIn"><Linkedin size={20} /></a>
+          <a href="#" className="social-icon" title="GitHub"><Github size={20} /></a>
+          <a href="mailto:support@trendlens.com" className="social-icon" title="Contact"><Mail size={20} /></a>
+        </div>
+        <p className="footer-text">
+          © {currentYear} TrendLens. AI-Powered Market Trend Analysis.
+        </p>
+      </div>
     </footer>
   );
 };

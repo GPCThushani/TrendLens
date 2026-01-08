@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Search, Plus, X, Download, FileText, TrendingUp, PieChart, MessageSquare, Clock } from 'lucide-react';
+import { Search, Plus, X, Sun, Moon, Download, FileText, TrendingUp, PieChart, MessageSquare, Clock } from 'lucide-react';
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
 
@@ -112,11 +112,7 @@ function App() {
     <div className={`app ${isDarkMode ? 'dark' : 'light'}`}>
       <div className="container">
         
-        {/* Header (Updated with new Logo logic) */}
-        <Header 
-          isDarkMode={isDarkMode} 
-          setIsDarkMode={setIsDarkMode} 
-        />
+        <Header isDarkMode={isDarkMode} setIsDarkMode={setIsDarkMode} />
 
         {/* --- HERO / SEARCH SECTION --- */}
         <section className="search-section">
@@ -127,7 +123,6 @@ function App() {
              <p className="subtitle">Analyze trends, forecast growth & discover niches.</p>
           </div>
 
-          {/* Time Period Selector - Moved Here */}
           <div style={{ display:'flex', justifyContent:'center', marginBottom:'20px' }}>
              <div className="glass-card" style={{ padding:'8px 20px', borderRadius:'50px', display:'flex', alignItems:'center', gap:'10px' }}>
                 <Clock size={16} color="var(--accent-primary)" />
@@ -146,7 +141,6 @@ function App() {
              </div>
           </div>
 
-          {/* Search Inputs */}
           {keywordInputs.map((kw, index) => (
             <div key={index} className="search-row">
               <input 
@@ -165,7 +159,6 @@ function App() {
             </div>
           ))}
 
-          {/* Buttons */}
           <div className="action-row">
             {keywordInputs.length < 5 && (
               <button onClick={addInputField} className="btn-secondary">
@@ -179,7 +172,6 @@ function App() {
           
           {error && <div className="error-msg">{error}</div>}
 
-          {/* History */}
           {history.length > 0 && (
             <div className="history-section">
               <span className="history-label">Recent Searches:</span>
@@ -198,10 +190,15 @@ function App() {
 
         {/* --- RESULTS DASHBOARD --- */}
         {results && (
-          <div id="dashboard" className="dashboard-grid">
+          <div id="dashboard" className="dashboard-grid" style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', 
+              gap: '25px', 
+              paddingBottom: '40px' 
+          }}>
             
             {/* Header Actions */}
-            <div className="full-width" style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
+            <div style={{ gridColumn: '1 / -1', display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'10px' }}>
               <h2 className="card-title"><TrendingUp className="gradient-text"/> Report Analysis</h2>
               <button onClick={exportPDF} className="btn-secondary" style={{width: 'auto'}}>
                 <FileText size={16}/> Export PDF
@@ -209,7 +206,7 @@ function App() {
             </div>
 
             {/* Main Trend Chart */}
-            <div className="glass-card full-width">
+            <div className="glass-card" style={{ gridColumn: '1 / -1' }}>
               <div className="card-header">
                 <h3 className="card-title">📉 Comparison & Forecast</h3>
               </div>
@@ -217,41 +214,39 @@ function App() {
             </div>
 
             {/* Related Keywords */}
-            <div className="full-width">
+            <div style={{ gridColumn: '1 / -1' }}>
               <RelatedKeywords data={results} />
             </div>
 
-            {/* Cards Loop - Grid Layout Fixed with minmax to prevent overlap */}
+            {/* Cards Loop - Fixed Layout Overlap */}
             {Object.keys(results).map((kw) => (
               <React.Fragment key={kw}>
-                
-                {/* Sentiment - Fixed height/width to prevent overlap */}
+                {/* Sentiment Card */}
                 <div className="glass-card" style={{ 
                     textAlign: 'center', 
-                    minHeight:'450px',
+                    height: '400px', // Fixed height to ensure alignment
                     display: 'flex', 
                     flexDirection: 'column', 
-                    justifyContent:'space-between' 
+                    justifyContent: 'space-between',
+                    padding: '20px'
                 }}>
-                  <div className="card-header" style={{justifyContent:'center'}}>
-                    <h3 className="card-title"><PieChart size={18}/> {kw} Sentiment</h3>
+                  <div className="card-header" style={{ justifyContent: 'center', marginBottom: '10px' }}>
+                    <h3 className="card-title" style={{ fontSize: '1.1rem' }}>
+                      <PieChart size={18}/> {kw} Sentiment
+                    </h3>
                   </div>
                   
-                  {/* Container ensures pie chart doesn't grow uncontrollably */}
-                  <div style={{ height: '250px', width: '100%', display:'flex', justifyContent:'center', position:'relative' }}>
+                  {/* The chart will now fill this flexible space */}
+                  <div style={{ flex: 1, width: '100%', minHeight: 0 }}>
                     <SentimentChart sentiment={results[kw].sentiment} />
                   </div>
-                  
-                  <button onClick={() => {}} className="btn-secondary" style={{marginTop:'20px', width:'100%'}}>
-                     Download CSV
-                  </button>
                 </div>
 
-                {/* Summary */}
-                <div className="glass-card" style={{ minHeight:'450px' }}>
+                {/* Summary Card */}
+                <div className="glass-card" style={{ height: '400px', overflowY: 'auto' }}>
                   <div className="card-header">
-                    <span className="tag" style={{background: 'var(--accent-primary)', color:'white'}}>{kw}</span>
-                    <MessageSquare size={18} style={{opacity:0.7}}/>
+                    <span className="tag" style={{ background: 'var(--accent-primary)', color: 'white' }}>{kw}</span>
+                    <MessageSquare size={18} style={{ opacity: 0.7 }} />
                   </div>
                   <SummaryCard summary={results[kw].summary || "No summary available."} />
                 </div>

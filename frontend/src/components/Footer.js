@@ -13,6 +13,14 @@ const Footer = () => {
           <a href="#" className="social-icon" title="GitHub"><Github size={20} /></a>
           <a href="mailto:support@trendlens.com" className="social-icon" title="Contact"><Mail size={20} /></a>
         </div>
+        
+        {/* Added Legal Links */}
+        <div style={{ margin: '20px 0', fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+            <a href="#" style={{ margin: '0 10px', textDecoration:'none', color:'inherit' }}>Privacy Policy</a>
+            |
+            <a href="#" style={{ margin: '0 10px', textDecoration:'none', color:'inherit' }}>Terms & Conditions</a>
+        </div>
+
         <p className="footer-text">
           © {currentYear} TrendLens. AI-Powered Market Trend Analysis.
         </p>

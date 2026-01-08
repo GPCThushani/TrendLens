@@ -10,124 +10,97 @@ import {
   Title,
   Tooltip,
   Legend,
-  Filler, // <--- 1. Import Filler
+  Filler,
 } from "chart.js";
 import { Line, Bar, Radar } from "react-chartjs-2";
 
-// 2. Register Filler (Prevents crash on some chart types)
 ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  RadialLinearScale,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
+  CategoryScale, LinearScale, PointElement, LineElement, 
+  BarElement, RadialLinearScale, Title, Tooltip, Legend, Filler
 );
 
 const TrendChart = ({ results, chartType = "line", period = "12", isDarkMode }) => {
   const chartRef = useRef(null);
 
-  if (!results || Object.keys(results).length === 0) {
-    return <p style={{ textAlign: "center", color: isDarkMode ? "#ccc" : "#666" }}>No trend data available.</p>;
-  }
+  if (!results || Object.keys(results).length === 0) return <p>No data.</p>;
 
-  // 3. SAFETY: Filter only keywords that actually have valid trend_data
-  const validKeys = Object.keys(results).filter(
-    (key) => results[key] && Array.isArray(results[key].trend_data) && results[key].trend_data.length > 0
-  );
+  // Filter valid keys
+  const validKeys = Object.keys(results).filter(k => results[k] && results[k].trend_data);
+  if (validKeys.length === 0) return <p>Error loading data.</p>;
 
-  if (validKeys.length === 0) {
-    return <p style={{ textAlign: "center", color: "red" }}>All keywords failed to load data.</p>;
-  }
-
-  // Use the first valid keyword to get the date labels
+  // 1. Setup Labels (Historical + 3 Forecast Months)
   const firstKey = validKeys[0];
-  const labels = results[firstKey].trend_data
-    .slice(-parseInt(period))
-    .map((d) => d.date);
+  const historicalData = results[firstKey].trend_data.slice(-parseInt(period));
+  const historicalLabels = historicalData.map(d => d.date);
+  
+  // Generate future labels
+  const lastDate = new Date(historicalLabels[historicalLabels.length - 1]);
+  const futureLabels = [1, 2, 3].map(i => {
+    const d = new Date(lastDate);
+    d.setMonth(d.getMonth() + i);
+    return d.toISOString().split('T')[0]; // YYYY-MM-DD
+  });
+  
+  const labels = [...historicalLabels, ...futureLabels];
 
-  const datasets = validKeys.map((kw, idx) => ({
-    label: kw,
-    data: results[kw].trend_data.slice(-parseInt(period)).map((d) => d.value),
-    borderColor: `hsl(${idx * 60}, 70%, 50%)`,
-    backgroundColor: `hsla(${idx * 60}, 70%, 50%, 0.5)`,
-    borderWidth: 2,
-    tension: 0.3,
-    // Fill area for Radar/Bar, but usually not for Line unless desired
-    fill: chartType !== "line", 
-  }));
+  // 2. Build Datasets (Historical Line + Forecast Dashed Line)
+  const datasets = [];
 
-  const chartData = { labels, datasets };
+  validKeys.forEach((kw, idx) => {
+    const baseColor = `hsl(${idx * 60 + 200}, 70%, 50%)`; // Blue-ish spectrum
+    
+    // Historical Data
+    const histValues = results[kw].trend_data.slice(-parseInt(period)).map(d => d.value);
+    
+    // Forecast Data (Connect last historical point to forecast)
+    const forecastValues = results[kw].forecast || [];
+    // We pad the beginning with 'null' so the line starts after historical data
+    const forecastPlot = Array(histValues.length - 1).fill(null);
+    forecastPlot.push(histValues[histValues.length - 1]); // Connection point
+    forecastPlot.push(...forecastValues);
+
+    // Add Solid Line (History)
+    datasets.push({
+      label: `${kw} (History)`,
+      data: [...histValues, null, null, null], // Pad end
+      borderColor: baseColor,
+      backgroundColor: baseColor,
+      borderWidth: 2,
+      tension: 0.3,
+      fill: false,
+    });
+
+    // Add Dashed Line (Forecast)
+    datasets.push({
+      label: `${kw} (Forecast)`,
+      data: forecastPlot,
+      borderColor: baseColor,
+      borderDash: [5, 5], // Dashed line
+      borderWidth: 2,
+      pointRadius: 4, // Highlight predictions
+      fill: false,
+    });
+  });
+
+  const data = { labels, datasets };
 
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
     plugins: {
-      legend: { position: "bottom", labels: { color: isDarkMode ? "#fff" : "#000" } },
-      title: { display: true, text: "Keyword Trend Comparison", color: isDarkMode ? "#fff" : "#000" },
-      tooltip: { mode: "index", intersect: false },
+      legend: { position: "top", labels: { color: isDarkMode ? "#fff" : "#000" } },
+      title: { display: true, text: "Trend Forecast (Next 3 Months)", color: isDarkMode ? "#fff" : "#000" },
     },
     scales: {
-      y: {
-        beginAtZero: true,
-        ticks: { color: isDarkMode ? "#fff" : "#000" },
-        grid: { color: isDarkMode ? "#444" : "#e5e5e5" }
-      },
-      x: { 
-        ticks: { color: isDarkMode ? "#fff" : "#000" },
-        grid: { color: isDarkMode ? "#444" : "#e5e5e5" }
-      },
-      r: { // Radar chart specific scale
-        angleLines: { color: isDarkMode ? "#666" : "#ccc" },
-        grid: { color: isDarkMode ? "#444" : "#ddd" },
-        pointLabels: { color: isDarkMode ? "#fff" : "#000" },
-        ticks: { backdropColor: "transparent" }
-      }
+      y: { ticks: { color: isDarkMode ? "#fff" : "#000" }, grid: { color: isDarkMode ? "#333" : "#ddd" } },
+      x: { ticks: { color: isDarkMode ? "#fff" : "#000" }, grid: { color: isDarkMode ? "#333" : "#ddd" } }
     },
   };
 
-  const downloadChart = () => {
-    if (!chartRef.current) return;
-    const base64 = chartRef.current.toBase64Image();
-    const link = document.createElement("a");
-    link.href = base64;
-    link.download = `${chartType}_chart.png`;
-    link.click();
-  };
-
-  // Render chart based on type
-  let ChartComponent = Line;
-  if (chartType === "bar") ChartComponent = Bar;
-  else if (chartType === "radar") ChartComponent = Radar;
-
   return (
-    <div style={{ width: "90%", maxWidth: "1200px", margin: "20px auto" }}>
-      <div style={{ height: "500px", position: "relative" }}>
-        <ChartComponent ref={chartRef} data={chartData} options={options} />
-      </div>
-      <div style={{ textAlign: "center", marginTop: "15px" }}>
-        <button
-          onClick={downloadChart}
-          style={{
-            padding: "10px 20px",
-            fontSize: "14px",
-            backgroundColor: "#4caf50",
-            color: "#fff",
-            border: "none",
-            borderRadius: "8px",
-            cursor: "pointer",
-            transition: "0.3s",
-          }}
-          onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
-          onMouseOut={(e) => (e.target.style.backgroundColor = "#4caf50")}
-        >
-          Download Chart
-        </button>
-      </div>
+    <div style={{ height: "400px", padding: "20px" }}>
+       <Line ref={chartRef} data={data} options={options} />
     </div>
   );
 };

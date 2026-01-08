@@ -18,7 +18,7 @@ const Header = ({ isDarkMode, setIsDarkMode }) => {
         <img 
           src={logo} 
           alt="TrendLens Logo" 
-          style={{ width: '100px', height: '100px', objectFit: 'contain' }} 
+          style={{ width: '250px', height: '250px', objectFit: 'contain' }} 
         />
       </div>
 
